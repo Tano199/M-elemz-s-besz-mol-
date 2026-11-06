@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Műelemzés-beadandók (Fresh Session)</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Strict Times New Roman enforcement */
+        body, button, input, span, div, a, label {
+            font-family: "Times New Roman", Times, serif !important;
+        }
+
+        /* Baroque wallpaper background */
+        body {
+            background-image: url('https://tapetatrend.hu/product-image/barokk-mintas-olasz-design-tapeta-sargas-beige-szinben-144945-181186.jpg');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            background-attachment: fixed;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* DVD Bouncing portraits canvas */
+        #dvd-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Foreground interactive content layer */
+        .app-layer {
+            position: relative;
+            z-index: 20;
+        }
+    </style>
+</head>
+<body class="flex flex-col min-h-screen justify-between items-center p-4">
+
+    <!-- DVD Bouncing Canvas -->
+    <canvas id="dvd-canvas"></canvas>
+
+    <!-- HEADER NAVIGATION -->
+    <header class="w-full max-w-5xl flex justify-between items-center py-4 px-2 app-layer">
+        <div id="nav-top-left" class="cursor-pointer text-[#93FFFF] font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition hover:opacity-80 text-[16px]">
+            <!-- Dynamic Top Left -->
+        </div>
+        <div id="nav-top-right" class="cursor-pointer text-[#93FFFF] font-bold drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] transition hover:opacity-80 text-[16px]">
+            Bejelentkezés
+        </div>
+    </header>
+
+    <!-- MAIN VIEW CONTAINER -->
+    <main class="w-full flex-grow flex items-center justify-center py-8 app-layer">
+        
+        <!-- 1. FŐOLDAL VIEW -->
+        <div id="view-home" class="w-full max-w-xl flex flex-col items-center">
+            <div id="home-card" class="bg-white/25 backdrop-blur-[2px] rounded-2xl p-8 shadow-xl flex flex-col items-center text-center transition-all duration-300 w-full max-w-md">
+                <h1 class="text-[22px] font-bold text-black mb-2">Műelemzés-beadandók</h1>
+                <h2 class="text-[18px] text-black mb-6">Névery Tamás és Szabolcs Zsigmond</h2>
+                
+                <div id="btn-toggle-assignments" class="text-[20px] text-black font-semibold cursor-pointer hover:underline py-1 transition">
+                    Beadandók megtekintése
+                </div>
+
+                <div id="assignments-list-container" class="w-full mt-4 flex flex-col items-center space-y-2 hidden">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. BEJELENTKEZÉS VIEW -->
+        <div id="view-login" class="w-full max-w-xl flex flex-col items-center hidden">
+            <div class="bg-[#7CB0FF]/90 rounded-2xl p-10 shadow-2xl flex flex-col items-center text-center w-full max-w-md relative">
+                <h1 class="text-[22px] font-bold text-black mb-6">Bejelentkezés</h1>
+                
+                <div class="flex items-center justify-center mb-4 w-full">
+                    <label for="input-username" class="text-[16px] text-black font-medium text-right w-1/3 pr-2">Felhasználónév:</label>
+                    <input type="text" id="input-username" maxlength="15" class="text-[14px] text-black text-left px-2 py-1 bg-white border border-gray-400 rounded w-[15ch] focus:outline-none focus:ring-2 focus:ring-black">
+                </div>
+
+                <div class="flex items-center justify-center mb-4 w-full">
+                    <label for="input-password" class="text-[16px] text-black font-medium text-right w-1/3 pr-2">Jelszó:</label>
+                    <input type="password" id="input-password" maxlength="15" class="text-[14px] text-black text-left px-2 py-1 bg-white border border-gray-400 rounded w-[15ch] focus:outline-none focus:ring-2 focus:ring-black">
+                </div>
+
+                <div id="login-error-slot" class="min-h-[24px] mb-2 w-full text-center"></div>
+
+                <div id="btn-execute-login" class="text-[20px] text-black font-semibold cursor-pointer hover:underline mt-2">
+                    Belépés
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. FÁJL FELTÖLTÉSE VIEW -->
+        <div id="view-upload" class="w-full max-w-xl flex flex-col items-center hidden">
+            <div class="bg-white/30 backdrop-blur-[2px] rounded-2xl p-10 shadow-xl flex flex-col items-center text-center w-full max-w-md space-y-4">
+                
+                <input type="file" id="native-file-picker" class="hidden">
+
+                <div id="upload-workflow-container" class="w-full flex flex-col items-center space-y-3">
+                    <div id="btn-trigger-file-picker" class="text-[22px] text-black font-bold cursor-pointer hover:underline">
+                        Fájl feltöltése
+                    </div>
+                </div>
+
+            </div>
+        </div>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="w-full max-w-5xl py-4 text-center text-black/70 text-xs app-layer">
+        Műelemzés-beadandók Rendszer &copy; 2026 (Fresh Session)
+    </footer>
+
+    <!-- SCRIPT LOGIC -->
+    <script>
+        // --- APPLICATION STATE ---
+        let activeView = 'home'; // 'home', 'login', 'upload'
+        let currentUser = null; // 'Tamás' or 'Zsigmond'
+        let uploadedFilesRepo = [];
+        let isAssignmentsVisible = false;
+        let fileState = 'idle'; // 'idle', 'success', 'deleted', 'failed'
+        let currentUploadedFileItem = null;
+
+        // --- DOM ELEMENTS ---
+        const viewHome = document.getElementById('view-home');
+        const viewLogin = document.getElementById('view-login');
+        const viewUpload = document.getElementById('view-upload');
+        const navTopLeft = document.getElementById('nav-top-left');
+        const navTopRight = document.getElementById('nav-top-right');
+
+        const btnToggleAssignments = document.getElementById('btn-toggle-assignments');
+        const assignmentsListContainer = document.getElementById('assignments-list-container');
+
+        const btnExecuteLogin = document.getElementById('btn-execute-login');
+        const inputUsername = document.getElementById('input-username');
+        const inputPassword = document.getElementById('input-password');
+        const loginErrorSlot = document.getElementById('login-error-slot');
+
+        const nativeFilePicker = document.getElementById('native-file-picker');
+        const uploadWorkflowContainer = document.getElementById('upload-workflow-container');
+
+        // --- VIEW MANAGER ---
+        function transitionToView(targetView) {
+            activeView = targetView;
+            viewHome.classList.add('hidden');
+            viewLogin.classList.add('hidden');
+            viewUpload.classList.add('hidden');
+
+            if (targetView === 'home') {
+                viewHome.classList.remove('hidden');
+                navTopLeft.innerHTML = '';
+                navTopRight.innerHTML = 'Bejelentkezés';
+                navTopRight.style.fontSize = '16px';
+            } else if (targetView === 'login') {
+                viewLogin.classList.remove('hidden');
+                navTopLeft.innerHTML = 'Visszalépés';
+                navTopLeft.style.fontSize = '16px';
+                navTopRight.innerHTML = '';
+                inputUsername.value = '';
+                inputPassword.value = '';
+                loginErrorSlot.innerHTML = '';
+            } else if (targetView === 'upload') {
+                viewUpload.classList.remove('hidden');
+                navTopLeft.innerHTML = 'Vissza a főoldalra';
+                navTopLeft.style.fontSize = '18px';
+                navTopRight.innerHTML = (currentUser === 'Tamás') ? 'Tamás fiókja' : 'Zsigmond fiókja';
+                navTopRight.style.fontSize = '16px';
+                resetFileUploadWorkflow();
+            }
+        }
+
+        // --- NAVIGATION CLICK LISTENERS ---
+        navTopRight.addEventListener('click', () => {
+            if (activeView === 'home') {
+                if (currentUser) {
+                    transitionToView('upload');
+                } else {
+                    transitionToView('login');
+                }
+            }
+        });
+
+        navTopLeft.addEventListener('click', () => {
+            if (activeView === 'login' || activeView === 'upload') {
+                transitionToView('home');
+            }
+        });
+
+        // --- HOME ASSIGNMENTS TOGGLE ---
+        btnToggleAssignments.addEventListener('click', () => {
+            isAssignmentsVisible = !isAssignmentsVisible;
+            renderAssignmentsList();
+        });
+
+        function renderAssignmentsList() {
+            if (!isAssignmentsVisible) {
+                assignmentsListContainer.classList.add('hidden');
+                assignmentsListContainer.innerHTML = '';
+                return;
+            }
+
+            assignmentsListContainer.classList.remove('hidden');
+            assignmentsListContainer.innerHTML = '';
+
+            if (uploadedFilesRepo.length === 0) {
+                const emptyNotice = document.createElement('div');
+                emptyNotice.className = 'text-[14px] italic text-black text-center';
+                emptyNotice.innerText = 'Nincsenek feltöltött fájlok';
+                assignmentsListContainer.appendChild(emptyNotice);
+            } else {
+                uploadedFilesRepo.forEach((fileObj) => {
+                    const downloadAnchor = document.createElement('a');
+                    downloadAnchor.href = fileObj.url;
+                    downloadAnchor.download = fileObj.name;
+                    downloadAnchor.className = 'text-[18px] text-[#004A7F] font-normal hover:underline text-center block transition';
+                    downloadAnchor.innerText = fileObj.name;
+                    assignmentsListContainer.appendChild(downloadAnchor);
+                });
+            }
+        }
+
+        // --- LOGIN AUTHENTICATION LOGIC ---
+        btnExecuteLogin.addEventListener('click', processLogin);
+        inputPassword.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') processLogin();
+        });
+
+        function processLogin() {
+            const uVal = inputUsername.value.trim();
+            const pVal = inputPassword.value;
+
+            const validTamash = (uVal === 'Tamás' && pVal === 'Infinity Train');
+            const validZsigmond = (uVal === 'Zsigmond' && pVal === '123456');
+
+            if (validTamash || validZsigmond) {
+                currentUser = validTamash ? 'Tamás' : 'Zsigmond';
+                loginErrorSlot.innerHTML = '';
+                transitionToView('upload');
+            } else {
+                loginErrorSlot.innerHTML = `<span class="text-red-600 text-[16px] font-bold">Felhasználónév vagy jelszó helytelen</span>`;
+            }
+        }
+
+        // --- FILE UPLOAD & DELETION STATE MACHINE ---
+        function resetFileUploadWorkflow() {
+            fileState = 'idle';
+            renderFileUploadUI();
+        }
+
+        nativeFilePicker.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files.length > 0) {
+                const selectedFile = e.target.files[0];
+                
+                // Simulate failure condition if file size is 0 or name contains "error"
+                if (selectedFile.size === 0 || selectedFile.name.toLowerCase().includes('error')) {
+                    fileState = 'failed';
+                } else {
+                    fileState = 'success';
+                    currentUploadedFileItem = {
+                        name: selectedFile.name,
+                        url: URL.createObjectURL(selectedFile)
+                    };
+                    uploadedFilesRepo.push(currentUploadedFileItem);
+                }
+                renderFileUploadUI();
+                nativeFilePicker.value = '';
+            }
+        });
+
+        function renderFileUploadUI() {
+            uploadWorkflowContainer.innerHTML = '';
+
+            if (fileState === 'idle' || fileState === 'deleted') {
+                const uploadPrompt = document.createElement('div');
+                uploadPrompt.className = 'text-[22px] text-black font-bold cursor-pointer hover:underline';
+                uploadPrompt.innerText = 'Fájl feltöltése';
+                uploadPrompt.addEventListener('click', () => nativeFilePicker.click());
+                uploadWorkflowContainer.appendChild(uploadPrompt);
+            } 
+            else if (fileState === 'success') {
+                const successNotice = document.createElement('div');
+                successNotice.className = 'text-[22px] text-green-600 font-bold text-center';
+                successNotice.innerText = 'Sikeres feltöltés';
+                uploadWorkflowContainer.appendChild(successNotice);
+
+                const deletePrompt = document.createElement('div');
+                deletePrompt.className = 'text-[16px] text-red-600 font-bold cursor-pointer hover:underline text-center mt-2';
+                deletePrompt.innerText = 'Feltöltött fájl törlése';
+                deletePrompt.addEventListener('click', () => {
+                    if (currentUploadedFileItem) {
+                        uploadedFilesRepo = uploadedFilesRepo.filter(item => item !== currentUploadedFileItem);
+                        currentUploadedFileItem = null;
+                    }
+                    fileState = 'deleted';
+                    renderFileUploadUI();
+
+                    setTimeout(() => {
+                        if (fileState === 'deleted') {
+                            uploadWorkflowContainer.innerHTML = '';
+                            const deletedNotice = document.createElement('div');
+                            deletedNotice.className = 'text-[18px] text-red-600 font-bold text-center';
+                            deletedNotice.innerText = 'Fájl törlése sikeres';
+                            uploadWorkflowContainer.appendChild(deletedNotice);
+
+                            setTimeout(() => {
+                                resetFileUploadWorkflow();
+                            }, 2000);
+                        }
+                    }, 100);
+                });
+                uploadWorkflowContainer.appendChild(deletePrompt);
+            }
+            else if (fileState === 'failed') {
+                const retryPrompt = document.createElement('div');
+                retryPrompt.className = 'text-[20px] text-red-600 font-bold cursor-pointer hover:underline text-center';
+                retryPrompt.innerText = 'Sikertelen volt a feltöltés, próbálja meg újra';
+                retryPrompt.addEventListener('click', () => nativeFilePicker.click());
+                uploadWorkflowContainer.appendChild(retryPrompt);
+            }
+        }
+
+
+        // --- SLOW DVD BOUNCING PHYSICS (BACH & PURCELL) ---
+        const canvas = document.getElementById('dvd-canvas');
+        const ctx = canvas.getContext('2d');
+
+        function resizeWindowCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeWindowCanvas);
+        resizeWindowCanvas();
+
+        const portraitBach = new Image();
+        portraitBach.src = 'https://upload.wikimedia.org/wikipedia/commons/6/6a/Johann_Sebastian_Bach.jpg';
+
+        const portraitPurcell = new Image();
+        portraitPurcell.src = 'https://vocalessence.org/wp-content/uploads/2021/02/henry-purcell-654x800.jpg';
+
+        let portraitsLoadedCount = 0;
+        portraitBach.onload = () => { portraitsLoadedCount++; };
+        portraitPurcell.onload = () => { portraitsLoadedCount++; };
+
+        // Slow movement (~1.1 to 1.3 px per frame)
+        const entityBach = {
+            img: portraitBach,
+            x: 80,
+            y: 80,
+            vx: 1.1,
+            vy: 1.0,
+            width: 110,
+            height: 130
+        };
+
+        const entityPurcell = {
+            img: portraitPurcell,
+            x: window.innerWidth - 200,
+            y: 80,
+            vx: -1.2,
+            vy: 1.1,
+            width: 110,
+            height: 135
+        };
+
+        function updateEntityPhysics(item) {
+            item.x += item.vx;
+            item.y += item.vy;
+
+            if (item.x <= 0) {
+                item.x = 0;
+                item.vx *= -1;
+            } else if (item.x + item.width >= canvas.width) {
+                item.x = canvas.width - item.width;
+                item.vx *= -1;
+            }
+
+            if (item.y <= 0) {
+                item.y = 0;
+                item.vy *= -1;
+            } else if (item.y + item.height >= canvas.height) {
+                item.y = canvas.height - item.height;
+                item.vy *= -1;
+            }
+        }
+
+        function resolveElasticCollision(e1, e2) {
+            if (
+                e1.x < e2.x + e2.width &&
+                e1.x + e1.width > e2.x &&
+                e1.y < e2.y + e2.height &&
+                e1.y + e1.height > e2.y
+            ) {
+                let overlapX1 = (e1.x + e1.width) - e2.x;
+                let overlapX2 = (e2.x + e2.width) - e1.x;
+                let overlapY1 = (e1.y + e1.height) - e2.y;
+                let overlapY2 = (e2.y + e2.height) - e1.y;
+
+                let minX = Math.min(overlapX1, overlapX2);
+                let minY = Math.min(overlapY1, overlapY2);
+
+                if (minX < minY) {
+                    let tempVx = e1.vx;
+                    e1.vx = e2.vx;
+                    e2.vx = tempVx;
+
+                    let shift = minX / 2 + 0.5;
+                    if (e1.x < e2.x) {
+                        e1.x -= shift;
+                        e2.x += shift;
+                    } else {
+                        e1.x += shift;
+                        e2.x -= shift;
+                    }
+                } else {
+                    let tempVy = e1.vy;
+                    e1.vy = e2.vy;
+                    e2.vy = tempVy;
+
+                    let shift = minY / 2 + 0.5;
+                    if (e1.y < e2.y) {
+                        e1.y -= shift;
+                        e2.y += shift;
+                    } else {
+                        e1.y += shift;
+                        e2.y -= shift;
+                    }
+                }
+            }
+        }
+
+        function runAnimationLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // Render DVD portraits exclusively on the home view
+            if (activeView === 'home' && portraitsLoadedCount >= 2) {
+                updateEntityPhysics(entityBach);
+                updateEntityPhysics(entityPurcell);
+                resolveElasticCollision(entityBach, entityPurcell);
+
+                ctx.save();
+                ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+                ctx.shadowBlur = 12;
+                ctx.drawImage(entityBach.img, entityBach.x, entityBach.y, entityBach.width, entityBach.height);
+                ctx.drawImage(entityPurcell.img, entityPurcell.x, entityPurcell.y, entityPurcell.width, entityPurcell.height);
+                ctx.restore();
+            }
+
+            requestAnimationFrame(runAnimationLoop);
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            transitionToView('home');
+            runAnimationLoop();
+        };
+    </script>
+</body>
+</html>
